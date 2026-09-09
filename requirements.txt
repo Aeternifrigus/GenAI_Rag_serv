@@ -1,0 +1,15 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+numpy==2.2.1
+scikit-learn==1.6.0
+
+# optional adapters: the service degrades gracefully without them
+psycopg2-binary==2.9.10   # pgvector store
+pymongo==4.10.1           # mongo source
+anthropic==0.42.0         # claude generator
+
+# dev
+pytest==8.3.4
+httpx==0.28.1
+ruff==0.8.4
