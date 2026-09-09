@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: pip install -r requirements.txt
+
+      - name: Lint
+        run: ruff check app tests scripts
+
+      - name: Unit tests
+        run: pytest -v
+
+      # Runs with no DATABASE_URL, no MONGO_URI and no ANTHROPIC_API_KEY, so this
+      # also proves the offline fallbacks work rather than only being declared.
+      - name: End-to-end smoke
+        run: python scripts/smoke.py
+
+  build:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t genai-rag-service:${{ github.sha }} .
