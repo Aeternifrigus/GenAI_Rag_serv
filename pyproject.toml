@@ -1,0 +1,23 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "BLE"]
+
+ignore = [
+    # Broad `except Exception` is deliberate throughout this service. Every one
+    # guards a fallback path: an unreachable Mongo, a missing embedding model, a
+    # failed generation call. The design goal is that an optional dependency
+    # failing degrades the response rather than returning a 500, which means the
+    # handler genuinely cannot enumerate what it is catching. Each site logs the
+    # exception and continues with a documented fallback.
+    "BLE001",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
