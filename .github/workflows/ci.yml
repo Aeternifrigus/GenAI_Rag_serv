@@ -19,8 +19,13 @@ jobs:
       - name: Install
         run: pip install -r requirements.txt
 
+      # Torch is installed separately so the job above proves the service works
+      # without it, and the reranker tests below still run rather than skipping.
+      - name: Install training extras
+        run: pip install -r requirements-training.txt
+
       - name: Lint
-        run: ruff check app tests scripts
+        run: ruff check app tests scripts training
 
       - name: Unit tests
         run: pytest -v

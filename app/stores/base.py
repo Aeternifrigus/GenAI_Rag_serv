@@ -29,6 +29,10 @@ class Chunk:
 class Hit:
     chunk: Chunk
     score: float                      # cosine similarity, higher is closer
+    # Set only when a reranker has read the (query, passage) pair. Kept separate
+    # from `score` rather than replacing it, so a wrong answer can be traced to
+    # retrieval missing the passage or to the reranker demoting it.
+    rerank_score: float | None = None
 
 
 class VectorStore(Protocol):

@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+train.log
+
+# Model checkpoints are build outputs, not source. `make train` reproduces them,
+# and a checkpoint that has not passed the promotion gate must not be shipped.
+models/*.pt

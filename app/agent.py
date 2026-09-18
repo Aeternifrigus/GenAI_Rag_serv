@@ -33,6 +33,8 @@ class RetrievalPlan:
     variants: list[str] = field(default_factory=list)
     sources: list[str] | None = None
     reason: str = ""
+    reranker: str = "none"
+    candidates: int = 0          # how many passages the reranker was shown
 
 
 @dataclass
@@ -62,12 +64,20 @@ class RetrievalAgent:
         k: int = 5,
         min_score: float = 0.05,
         use_llm_routing: bool = False,
+        reranker=None,
+        candidate_k: int = 20,
     ) -> None:
         self.store = store
         self.embedder = embedder
         self.k = k
         self.min_score = min_score
         self.use_llm_routing = use_llm_routing
+        self.reranker = reranker
+        # How many fused candidates the reranker is shown before it cuts to k.
+        # Reranking only the final k would just reorder what was already
+        # returned; the gain comes from letting it reach passages that fusion
+        # ranked below the cut line.
+        self.candidate_k = candidate_k
 
     # ── planning ────────────────────────────────────────────────
 
@@ -121,11 +131,16 @@ class RetrievalAgent:
     ) -> RetrievalResult:
         k = k or self.k
         plan = self.plan(query, sources)
+        reranking = self.reranker is not None and getattr(self.reranker, "name", "none") != "none"
+        plan.reranker = getattr(self.reranker, "name", "none") if reranking else "none"
+
+        # widen the pool only when something will actually reorder it
+        pool = max(self.candidate_k, k) if reranking else k
 
         if self.store.count() == 0:
             return RetrievalResult(plan=plan, hits=[])
 
-        hits = self._search(plan.variants, k, plan.sources)
+        hits = self._search(plan.variants, pool, plan.sources)
 
         # Routing is a heuristic over query wording, so it can send a query at a
         # source that holds nothing relevant. When the caller did not pin the
@@ -136,11 +151,27 @@ class RetrievalAgent:
             )
             plan.sources = None
             plan.reason += "; routed sources returned nothing, widened to all"
-            hits = self._search(plan.variants, k, None)
+            hits = self._search(plan.variants, pool, None)
+
+        plan.candidates = len(hits)
+        if reranking and hits:
+            try:
+                hits = self.reranker.rerank(query, hits, k)
+            except Exception as exc:
+                # A reranker failure must not lose the results it was handed.
+                # Fusion order is worse than reranked order and far better than
+                # nothing, so degrade to it and say so in the plan.
+                logger.warning("rerank failed (%s); keeping fusion order", exc)
+                plan.reason += f"; rerank failed ({type(exc).__name__}), kept fusion order"
+                plan.reranker = "none (failed)"
+                hits = hits[:k]
+        else:
+            hits = hits[:k]
 
         logger.info(
-            "retrieved %d hits for %r (sources=%s, variants=%d)",
+            "retrieved %d hits for %r (sources=%s, variants=%d, candidates=%d, rerank=%s)",
             len(hits), query, plan.sources or "all", len(plan.variants),
+            plan.candidates, plan.reranker,
         )
         return RetrievalResult(plan=plan, hits=hits)
 

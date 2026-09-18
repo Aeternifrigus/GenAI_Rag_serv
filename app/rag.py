@@ -45,6 +45,7 @@ class Citation:
     source: str
     score: float
     excerpt: str
+    rerank_score: float | None = None
     metadata: dict = field(default_factory=dict)
 
 
@@ -68,6 +69,7 @@ def _build_citations(hits: Sequence[Hit], excerpt_chars: int = 220) -> list[Cita
             doc_id=h.chunk.doc_id,
             source=h.chunk.source,
             score=round(h.score, 4),
+            rerank_score=None if h.rerank_score is None else round(h.rerank_score, 4),
             excerpt=h.chunk.text[:excerpt_chars]
             + ("…" if len(h.chunk.text) > excerpt_chars else ""),
             metadata=h.chunk.metadata,
