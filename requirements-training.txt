@@ -1,0 +1,9 @@
+# Reranker training and serving. Kept out of requirements.txt because the service
+# runs, and every one of its endpoints works, with none of this installed: the
+# reranker simply resolves to "none" and retrieval ends at rank fusion.
+
+torch==2.14.0
+
+# Optional on top of that: a pretrained cross-encoder instead of the in-repo one.
+# Needs the model weights to be reachable the first time it loads.
+# transformers==5.17.0

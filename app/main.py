@@ -90,6 +90,7 @@ class CitationOut(BaseModel):
     doc_id: str
     source: str
     score: float
+    rerank_score: float | None = None
     excerpt: str
     metadata: dict[str, Any]
 
@@ -99,6 +100,8 @@ class PlanOut(BaseModel):
     variants: list[str]
     sources: list[str] | None
     reason: str
+    reranker: str = "none"
+    candidates: int = 0
 
 
 class QueryResponse(BaseModel):
@@ -166,7 +169,12 @@ def ingest(req: IngestRequest) -> IngestResponse:
 
 def _plan_out(plan) -> PlanOut:
     return PlanOut(
-        query=plan.query, variants=plan.variants, sources=plan.sources, reason=plan.reason
+        query=plan.query,
+        variants=plan.variants,
+        sources=plan.sources,
+        reason=plan.reason,
+        reranker=plan.reranker,
+        candidates=plan.candidates,
     )
 
 

@@ -51,6 +51,17 @@ class Settings:
     chunk_size: int = field(default_factory=lambda: int(os.environ.get("CHUNK_SIZE", "900")))
     chunk_overlap: int = field(default_factory=lambda: int(os.environ.get("CHUNK_OVERLAP", "150")))
 
+    # reranking
+    rerank_provider: str = field(
+        default_factory=lambda: os.environ.get("RERANK_PROVIDER", "auto")
+    )
+    rerank_candidates: int = field(
+        default_factory=lambda: int(os.environ.get("RERANK_CANDIDATES", "20"))
+    )
+    rerank_model_path: str | None = field(
+        default_factory=lambda: os.environ.get("RERANK_MODEL_PATH")
+    )
+
     # service
     auto_ingest: bool = field(default_factory=lambda: _env_bool("AUTO_INGEST", True))
     port: int = field(default_factory=lambda: int(os.environ.get("PORT", "8080")))
@@ -65,6 +76,7 @@ class Registry:
     def __init__(self) -> None:
         self.embedder = None
         self.store = None
+        self.reranker = None
         self.agent = None
         self.pipeline = None
         self.ingestion = None
@@ -75,6 +87,7 @@ class Registry:
         from .embeddings import get_embedder
         from .ingest import IngestionPipeline
         from .rag import RagPipeline, get_generator
+        from .rerank import get_reranker
         from .stores.memory import InMemoryVectorStore
 
         self.embedder = get_embedder(settings.embed_provider, settings.embed_dim)
@@ -97,11 +110,18 @@ class Registry:
         generator = get_generator(settings.generator)
         self.resolved["generator"] = generator.name
 
+        self.reranker = get_reranker(
+            settings.rerank_provider, model_path=settings.rerank_model_path
+        )
+        self.resolved["reranker"] = self.reranker.name
+
         self.agent = RetrievalAgent(
             store=self.store,
             embedder=self.embedder,
             k=settings.top_k,
             min_score=settings.min_score,
+            reranker=self.reranker,
+            candidate_k=settings.rerank_candidates,
         )
         self.pipeline = RagPipeline(agent=self.agent, generator=generator)
         self.ingestion = IngestionPipeline(

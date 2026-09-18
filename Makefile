@@ -1,7 +1,10 @@
-.PHONY: install test lint run smoke deps-up deps-down docker-build clean
+.PHONY: install install-training test lint run smoke train deps-up deps-down docker-build clean
 
 install:
 	pip install -r requirements.txt
+
+install-training:
+	pip install -r requirements.txt -r requirements-training.txt
 
 test:
 	pytest -v
@@ -14,6 +17,11 @@ run:
 
 smoke:
 	python scripts/smoke.py
+
+# Trains the reranker and measures it against fusion-only on the held-out
+# questions. Exits non-zero when the candidate fails the promotion gate.
+train:
+	python scripts/train_reranker.py
 
 # optional backing services
 deps-up:
